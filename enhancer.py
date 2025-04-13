@@ -10,12 +10,14 @@ from huggingface_hub import from_pretrained_keras
 
 
 @st.cache_resource
+@st.cache_resource
 def load_enhancer_model():
     model_path = os.path.join("models", "mirnet_enhancer.h5")
     return load_model(model_path, custom_objects={
-        "TFOpLambda": lambda x: x,  # or adjust if specific op is needed
-        "MIRNetBlock": MIRNetBlock  # ensure this is correctly imported
+        "TFOpLambda": lambda *args, **kwargs: args[0],  # handles name=... and other kwargs
+        "MIRNetBlock": MIRNetBlock  # make sure this is defined/imported
     })
+
 
 
 
