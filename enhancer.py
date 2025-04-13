@@ -1,15 +1,13 @@
-# enhancer.py
-
 import numpy as np
 from PIL import Image
 import os
-import tensorflow as tf
-from tensorflow.keras.models import load_model
 import streamlit as st
 from huggingface_hub import from_pretrained_keras
+
+# ✅ Load model from Hugging Face
 @st.cache_resource
 def load_enhancer_model():
-    return load_model("models/mirnet_enhancer.h5")
+    return from_pretrained_keras("keras-io/lowlight-enhance-mirnet")
 
 model = load_enhancer_model()
 
