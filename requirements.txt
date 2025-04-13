@@ -4,3 +4,6 @@ numpy
 Pillow
 torch
 matplotlib
+tensorflow
+Pillow
+huggingface_hub

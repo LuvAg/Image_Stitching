@@ -1,23 +1,10 @@
 import cv2
 import numpy as np
 import os
-from datetime import datetime
 import subprocess
-def iterative_superglue_stitch(start_idx, end_idx, input_dir, output_dir, temp_txt='temp_pairs.txt'):
-    """
-    Iteratively stitch images using SuperGlue from start_idx to end_idx (inclusive).
-    
-    Args:
-        start_idx (int): Starting image index (e.g., 1 for '1.jpg')
-        end_idx (int): Ending image index (inclusive)
-        input_dir (str): Directory containing input images
-        output_dir (str): Directory to store output images and match files
-        temp_txt (str): Temporary SuperGlue pairs file
-    """
-    def get_img_name(idx): return f"{idx}.jpg"
 
-    def load_image(idx): 
-        return cv2.imread(os.path.join(input_dir, get_img_name(idx)))
+def iterative_superglue_stitch(img1_name, img2_name, input_dir, output_dir, temp_txt='temp_pairs.txt'):
+    def load_image(name): return cv2.imread(os.path.join(input_dir, name))
 
     def generate_pair_txt(file_path, img1, img2):
         with open(file_path, 'w') as f:
@@ -44,7 +31,7 @@ def iterative_superglue_stitch(start_idx, end_idx, input_dir, output_dir, temp_t
             return False
         return True
 
-    def load_npz_matches(file_name, output_dir):
+    def load_npz_matches(file_name):
         npz = np.load(os.path.join(output_dir, file_name))
         matches = npz['matches']
         valid = matches > -1
@@ -80,33 +67,55 @@ def iterative_superglue_stitch(start_idx, end_idx, input_dir, output_dir, temp_t
         result[translation[1]:h1+translation[1], translation[0]:w1+translation[0]] = img1
         return crop_black(result)
 
-    stitched_img = load_image(start_idx)
-    stitched_name = f"{start_idx}"
-
-    for i in range(start_idx + 1, end_idx + 1):
-        next_img_name = get_img_name(i)
-        curr_img_path = os.path.join(output_dir, f"{stitched_name}_{i}.jpg")
-
-        generate_pair_txt(temp_txt, f"{stitched_name}.jpg", next_img_name)
-
-        temp_stitch_path = os.path.join(input_dir, f"{stitched_name}.jpg")
-        cv2.imwrite(temp_stitch_path, stitched_img)
-
-        npz_filename = f"{stitched_name}_{next_img_name[:-4]}_matches.npz"
-        print(f"Running SuperGlue between {stitched_name}.jpg and {next_img_name}")
-        success=1
-        if not os.path.exists(f"{output_dir}/{npz_filename}"):
-          success = run_superglue(temp_txt)
+    # Run SuperGlue matching
+    print(f"Generating pair text for {img1_name} and {img2_name}")
+    generate_pair_txt(temp_txt, img1_name, img2_name)
+    if not os.path.exists(os.path.join(output_dir, f"{img1_name[:-4]}_{img2_name[:-4]}_matches.npz")):
+        print(f"Running SuperGlue for {img1_name} and {img2_name}")
+        success = run_superglue(temp_txt)
         if not success:
-            print(f"Skipping {i} due to match failure.")
-            continue
+            raise RuntimeError(f"SuperGlue matching failed between {img1_name} and {img2_name}")
 
-        kp1, kp2 = load_npz_matches(npz_filename, output_dir)
-        next_img = load_image(i)
+    # Load matches and images
+    print(f"Loading matches for {img1_name} and {img2_name}")
+    kp1, kp2 = load_npz_matches(f"{img1_name[:-4]}_{img2_name[:-4]}_matches.npz")
+    img1 = load_image(img1_name)
+    img2 = load_image(img2_name)
 
-        stitched_img = stitch_from_numpy_matches(stitched_img, next_img, kp1, kp2)
-        stitched_name += f"_{i}"
-        cv2.imwrite(curr_img_path, stitched_img)
-        print(f"Saved stitched image: {curr_img_path}")
+    # Stitch the images
+    print(f"Stitching {img1_name} and {img2_name}")
+    stitched_img = stitch_from_numpy_matches(img1, img2, kp1, kp2)
+    stitched_name = f"{img1_name[:-4]}_{img2_name[:-4]}.jpg"
+    cv2.imwrite(os.path.join(output_dir, stitched_name), stitched_img)  # <--- fixed path
+    print(f"Stitched image saved as: {stitched_name}")
+    return stitched_name
 
-    return stitched_img
+
+
+def hierarchical_stitching(start_idx, end_idx, input_dir, output_dir):
+    """
+    Perform hierarchical pairwise stitching on images from start_idx to end_idx.
+    """
+    # Initial image names
+    img_list = [f"{i}.jpg" for i in range(start_idx, end_idx + 1)]
+
+    round_num = 0
+    while len(img_list) > 1:
+        print(f"\n--- Stitching Round {round_num+1} ---")
+        new_img_list = []
+        for i in range(0, len(img_list)-1, 2):
+            print(f"Stitching pair: {img_list[i]} + {img_list[i+1]}")
+            stitched_name = iterative_superglue_stitch(img_list[i], img_list[i+1], input_dir, output_dir)
+            new_img_list.append(stitched_name)
+
+        # Handle odd image out
+        if len(img_list) % 2 == 1:
+            print(f"Carrying forward last image: {img_list[-1]}")
+            new_img_list.append(img_list[-1])
+
+        img_list = new_img_list
+        round_num += 1
+
+    print(f"\n✅ Final stitched image: {img_list[0]}")
+    return img_list[0]
+
