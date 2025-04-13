@@ -8,10 +8,6 @@ from huggingface_hub import hf_hub_download
 from mirnet_custom import MIRNetBlock  # custom layer registration
 from huggingface_hub import from_pretrained_keras
 
-@st.cache_resource
-from tensorflow.keras.models import load_model
-import tensorflow as tf
-import os
 
 @st.cache_resource
 def load_enhancer_model():
