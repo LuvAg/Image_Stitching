@@ -9,9 +9,14 @@ from mirnet_custom import MIRNetBlock  # custom layer registration
 from huggingface_hub import from_pretrained_keras
 
 @st.cache_resource
+from tensorflow.keras.models import load_model
+import tensorflow as tf
+import os
+
+@st.cache_resource
 def load_enhancer_model():
     model_path = os.path.join("models", "mirnet_enhancer.h5")
-    return load_model(model_path)
+    return load_model(model_path, custom_objects={"TFOpLambda": tf.keras.layers.Lambda})
 
 
 
