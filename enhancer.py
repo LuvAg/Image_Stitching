@@ -21,7 +21,7 @@ def load_enhancer_model():
 
 
 
-model = load_enhancer_model()
+# model = load_enhancer_model()
 
 
 def load_and_preprocess_image(image_path):
