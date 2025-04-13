@@ -8,3 +8,4 @@ tensorflow
 Pillow
 huggingface_hub
 opencv-python-headless
+tensorflow.keras.models

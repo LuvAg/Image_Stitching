@@ -10,7 +10,8 @@ from huggingface_hub import from_pretrained_keras
 
 @st.cache_resource
 def load_enhancer_model():
-    return from_pretrained_keras("mrdbourke/lowlight-enhance-mirnet")
+    return from_pretrained_keras("keras-io/lowlight-enhance-mirnet")
+
 
 
 model = load_enhancer_model()
