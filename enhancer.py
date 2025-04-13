@@ -10,7 +10,8 @@ from huggingface_hub import from_pretrained_keras
 
 @st.cache_resource
 def load_enhancer_model():
-    return from_pretrained_keras("keras-io/lowlight-enhance-mirnet")
+    model_path = os.path.join("models", "mirnet_enhancer.h5")
+    return load_model(model_path)
 
 
 
