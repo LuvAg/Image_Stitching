@@ -7,3 +7,4 @@ matplotlib
 tensorflow
 Pillow
 huggingface_hub
+opencv-python-headless
