@@ -43,14 +43,16 @@
 # %AUTHORS_END%
 # --------------------------------------------------------------------*/
 # %BANNER_END%
-
+#!/usr/bin/env python3
+import sys
+# Add this path (replace with your actual path from 'where python')
+sys.path.append(r'C:\Users\luvag\AppData\Local\Programs\Python\Python312\Lib\site-packages')
+import numpy as np
 from pathlib import Path
 import argparse
 import random
 #!/usr/bin/env python3
 import sys
-import numpy as np  # Add this line
-sys.path.append('/path/to/venv/lib/python3.12/site-packages')  # Your actual path
 import matplotlib.cm as cm
 import torch
 
