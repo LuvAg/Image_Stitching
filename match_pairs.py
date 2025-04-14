@@ -47,9 +47,13 @@
 from pathlib import Path
 import argparse
 import random
-import numpy as np
+#!/usr/bin/env python3
+import sys
+import numpy as np  # Add this line
+sys.path.append('/path/to/venv/lib/python3.12/site-packages')  # Your actual path
 import matplotlib.cm as cm
 import torch
+
 
 
 from models.matching import Matching
