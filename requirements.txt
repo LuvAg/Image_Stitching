@@ -1,8 +1,11 @@
-streamlit
-opencv-python-headless
-numpy
-Pillow
-torch
-matplotlib
-tensorflow
-huggingface_hub
+# Core dependencies
+streamlit==1.32.2
+numpy==1.26.4
+opencv-python-headless==4.9.0.80  # GUI-free OpenCV
+Pillow==10.2.0                    # Image processing
+matplotlib==3.8.3                 # Visualization
+tqdm==4.66.2                      # Progress bars
+
+torch==2.2.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+tensorflow==2.15.0                
+huggingface_hub==0.21.4 
