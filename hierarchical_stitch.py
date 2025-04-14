@@ -11,8 +11,9 @@ def iterative_superglue_stitch(img1_name, img2_name, input_dir, output_dir, temp
             f.write(f"{img1} {img2}\n")
 
     def run_superglue(txt_filename):
+        match_script = os.path.abspath("match_pairs.py")
         command = [
-            "python", "match_pairs.py",
+            "python", match_script,
             "--resize", "-1",
             "--superglue", "outdoor",
             "--max_keypoints", "2048",

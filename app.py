@@ -1,3 +1,4 @@
+# app.py
 import os
 import shutil
 import streamlit as st
@@ -17,9 +18,9 @@ st.title("📸 SuperGlue Panorama Stitching App")
 # === Dynamic key to reset file_uploader ===
 if "uploader_key" not in st.session_state:
     st.session_state.uploader_key = "uploader_0"
+    
 # Modified enhancer import
 from enhancer import enhance_image_pil
-
 
 # === Sidebar: Options ===
 st.sidebar.title("🧵 Stitching Options")
@@ -45,77 +46,90 @@ if uploaded_files:
     if len(uploaded_files) < 2:
         st.warning("❗ Please upload at least two images.")
     else:
-        input_dir = "uploaded_images"
+        # Path handling
+        BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+        input_dir = os.path.abspath(os.path.join(BASE_DIR, "uploaded_images"))
         method_key = method.lower().replace(" ", "_")
-        output_dir = os.path.join(input_dir, f"output_{method_key}")
-
+        output_dir = os.path.abspath(os.path.join(BASE_DIR, input_dir, f"output_{method_key}"))
+        
         # Clean and prepare input/output folders
-        if os.path.exists(input_dir):
-            for filename in os.listdir(input_dir):
-                file_path = os.path.join(input_dir, filename)
-                if os.path.isfile(file_path) or filename.endswith(".npz") or filename == "temp_pairs.txt":
-                    os.remove(file_path)
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)
-        else:
-            os.makedirs(input_dir, exist_ok=True)
-
-        os.makedirs(output_dir, exist_ok=True)
+        try:
+            if os.path.exists(input_dir):
+                shutil.rmtree(input_dir)
+            os.makedirs(input_dir, exist_ok=True, mode=0o755)
+            
+            if os.path.exists(output_dir):
+                shutil.rmtree(output_dir)
+            os.makedirs(output_dir, exist_ok=True, mode=0o755)
+            
+        except Exception as dir_error:
+            st.error(f"🚨 Directory setup failed: {dir_error}")
+            st.stop()
 
         st.info("Saving images...")
         for idx, file in enumerate(uploaded_files, start=1):
-            image = Image.open(file).convert("RGB")
+            try:
+                image = Image.open(file).convert("RGB")
+                if enhance:
+                    st.text(f"Enhancing image {idx}...")
+                    image = enhance_image_pil(image)
+                image.save(os.path.join(input_dir, f"{idx}.jpg"))
+            except Exception as save_error:
+                st.error(f"💾 Failed to save image {idx}: {save_error}")
+                st.stop()
 
-            if enhance:
-                st.text(f"Enhancing image {idx}...")
-                image = enhance_image_pil(image)
-
-            image.save(os.path.join(input_dir, f"{idx}.jpg"))
+        # Generate temp_pairs.txt
+        pairs_path = os.path.join(input_dir, "temp_pairs.txt")
+        try:
+            with open(pairs_path, "w") as f:
+                for i in range(1, len(uploaded_files)):
+                    f.write(f"{i}.jpg {i+1}.jpg\n")
+        except IOError as file_error:
+            st.error(f"📄 Failed to create pairs file: {file_error}")
+            st.stop()
 
         start_idx = 1
         end_idx = len(uploaded_files)
 
         st.info(f"Running **{method}** on {end_idx} images...")
+        st.session_state.stitch_success = False
 
         with st.spinner("🧠 Stitching in progress..."):
             try:
-                if os.path.exists(output_dir):
-                    shutil.rmtree(output_dir)
-                os.makedirs(output_dir, exist_ok=True)
-
                 if method == "Original Sequential":
                     result_img = original_stitch(start_idx, end_idx, input_dir, output_dir)
-
                 elif method == "Hierarchical Stitching":
                     result_filename = hierarchical_stitching(start_idx, end_idx, input_dir, output_dir)
                     result_img = cv2.imread(os.path.join(output_dir, result_filename))
-
                 elif method == "Continuous Stitching":
                     result_img = continuous_stitch(start_idx, end_idx, input_dir, output_dir)
 
-                stitched_rgb = cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB)
-                st.image(Image.fromarray(stitched_rgb), caption="🧵 Final Stitched Panorama", use_column_width=True)
-                st.success("✅ Stitching complete!")
+                if result_img is not None:
+                    stitched_rgb = cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB)
+                    st.image(Image.fromarray(stitched_rgb), caption="🧵 Final Stitched Panorama", use_column_width=True)
+                    st.success("✅ Stitching complete!")
+                    st.session_state.stitch_success = True
+                else:
+                    raise ValueError("Empty result image")
 
             except Exception as e:
-                st.error(f"❌ Stitching failed: {e}")
+                st.error(f"❌ Stitching failed: {str(e)}")
+                st.session_state.stitch_success = False
 
-            finally:
-                # Cleanup output_dir
-                shutil.rmtree(output_dir, ignore_errors=True)
+        # Cleanup logic
+        if "stitch_success" in st.session_state:
+            try:
+                if st.session_state.stitch_success:
+                    shutil.rmtree(output_dir, ignore_errors=True)
+                    # Preserve input dir but remove contents
+                    for item in os.listdir(input_dir):
+                        item_path = os.path.join(input_dir, item)
+                        if os.path.isfile(item_path):
+                            os.remove(item_path)
+                        elif os.path.isdir(item_path):
+                            shutil.rmtree(item_path)
+            except Exception as cleanup_error:
+                st.error(f"🧹 Cleanup failed: {cleanup_error}")
 
-                # Clean uploaded_images content
-                for filename in os.listdir(input_dir):
-                    file_path = os.path.join(input_dir, filename)
-                    if os.path.isfile(file_path) or filename.endswith(".npz") or filename == "temp_pairs.txt":
-                        os.remove(file_path)
-                    elif os.path.isdir(file_path):
-                        shutil.rmtree(file_path)
-
-                # Clean up any global temp files
-                if os.path.exists("temp_pairs.txt"):
-                    os.remove("temp_pairs.txt")
-
-                # Reset uploader by changing its key and rerun
-                st.session_state.uploader_key = f"uploader_{int(time.time())}"
-                # No need for st.experimental_rerun(), the app will effectively "reset" now.
+        # Reset uploader
+        st.session_state.uploader_key = f"uploader_{int(time.time())}"
